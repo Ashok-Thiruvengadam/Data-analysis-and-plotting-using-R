@@ -1,0 +1,297 @@
+---
+title: "Homework 2"
+group no: 22
+author: "Ashok Thiruevengadam & Snehal Rajwar"
+output: html_document
+---
+
+```{r}
+
+library(devtools)
+devtools::install_github("tidyverse/dplyr")
+library(dplyr)
+library(magrittr)
+library(tidyr)
+library(readxl)
+library(ggplot2)
+library(gridExtra)
+
+
+```
+
+```{r}
+# Part-1 steps to get the required table 
+# a) Join all 4 forms of malnutrition tables using joins on Country and Year in R
+
+ overweight_df <- read.csv("DataOverweight.csv")
+ 
+ underweight_df <- read.csv("DataUnderweight.csv")
+ 
+ stunted_df <- read.csv("DataStunted.csv")
+
+ wasted_df <- read.csv("DataWasted.csv") 
+ 
+ inner_a <- merge(overweight_df, underweight_df, by = c("Year", "Country"))
+ 
+ inner_b <- merge(stunted_df, wasted_df, by = c("Year", "Country"))
+
+ inner_d <- merge(inner_a, inner_b, by = c("Year", "Country"))
+
+ inner_d <- inner_d[,-1]
+ 
+ print(inner_d)
+ 
+```
+
+```{r}
+# b) For each country, take the mean value for all the forms of malnutrition
+
+Output_df <- inner_d %>% 
+   group_by(Country) %>% 
+   summarise(AverageOverWeightProportion = mean(Children.aged..5.years.overweight..br.....weight.for.height...2.SD.),
+             AverageStuntedProportion = mean(Children.aged..5.years.stunted..br.....height.for.age...2.SD.),
+             AverageUnderWeightProportion = mean(Children.aged..5.years.underweight..br.....weight.for.age...2.SD.....),
+             AverageWastedProportion = mean(Children.aged..5.years.wasted..br.....weight.for.height...2.SD.))
+
+print(Output_df)
+
+```
+
+```{r}
+# c) Import the Data country parameters dataset and using joins, add WHO Region and Income group from the sheet 8 of the dataset
+
+dcp_df <- read_excel("Data_Country_Parameters.xls", sheet="Country")
+#rename the file Data Country Parameters becuase while importing due to gaps in name it was throwing error
+ final_df <- Output_df %>%
+   merge(dcp_df[, c('DisplayValue', 'WHO_REGION', 'World Bank income group')], by.x = 'Country', by.y = 'DisplayValue', all=TRUE)
+
+ final_record <- na.omit(final_df)  
+ print(final_record)
+
+```
+
+```{r}
+# 2. Plotting the graph 
+
+df_1 <- merge(inner_d, dcp_df[, c('DisplayValue', 'WHO_REGION', 'World Bank income group')], by.x = 'Country', by.y = 'DisplayValue', all=TRUE)
+
+
+
+Output_1 <- df_1 %>% 
+  na.omit() %>% 
+  group_by(WHO_REGION,`World Bank income group`) %>% 
+  summarise(AverageOverWeightProportion = mean(Children.aged..5.years.overweight..br.....weight.for.height...2.SD., na.rm = TRUE),
+            AverageStuntedProportion = mean(Children.aged..5.years.stunted..br.....height.for.age...2.SD., na.rm = TRUE),
+            AverageUnderWeightProportion = mean(Children.aged..5.years.underweight..br.....weight.for.age...2.SD....., na.rm = TRUE),
+            AverageWastedProportion = mean(Children.aged..5.years.wasted..br.....weight.for.height...2.SD., na.rm = TRUE))
+
+print(Output_1)
+
+par(mfrow=c(2,2))
+
+plot_1<-ggplot(data=Output_1, aes(x=WHO_REGION, y=AverageOverWeightProportion, fill=`World Bank income group`)) +
+  geom_bar(position="dodge", stat="identity") + 
+  scale_y_continuous("Percentage (%)") +
+  geom_text(aes(
+                label = round(Output_1$AverageOverWeightProportion, digits = 0)), colour= "Black", position = position_dodge(0.9),
+            hjust = -0.1,
+            size = 3) + 
+  scale_fill_brewer() + 
+  coord_flip() + 
+  xlab("WHO Region") +
+  ggtitle("Percentage of overweight children aged 0-5 years")
+
+
+plot_2<-ggplot(data=Output_1, aes(x=WHO_REGION, y=AverageUnderWeightProportion, fill=`World Bank income group`)) +
+  geom_bar(position="dodge", stat="identity") + 
+  scale_y_continuous("Percentage (%)") +
+  geom_text(aes(
+    label = round(Output_1$AverageUnderWeightProportion, digits = 0)), colour= "Black", position = position_dodge(0.9),
+    hjust = -0.1,
+    size = 3) + 
+  scale_fill_brewer() + 
+  coord_flip() + 
+  xlab("WHO Region") +
+  ggtitle("Percentage of UnderWeight children aged 0-5 years")
+
+
+plot_3<-ggplot(data=Output_1, aes(x=WHO_REGION, y=AverageStuntedProportion, fill=`World Bank income group`)) +
+  geom_bar(position="dodge", stat="identity") + 
+  scale_y_continuous("Percentage (%)") +
+  geom_text(aes(
+    label = round(Output_1$AverageStuntedProportion, digits = 0)), colour= "Black", position = position_dodge(0.9),
+    hjust = -0.1,
+    size = 3) + 
+  scale_fill_brewer() + 
+  coord_flip() + 
+  xlab("WHO Region") +
+  ggtitle("Percentage of Stunted children aged 0-5 years")
+
+
+plot_4<-ggplot(data=Output_1, aes(x=WHO_REGION, y=AverageWastedProportion, fill=`World Bank income group`)) +
+  geom_bar(position="dodge", stat="identity") + 
+  scale_y_continuous("Percentage (%)") +
+  geom_text(aes(
+    label = round(Output_1$AverageWastedProportion, digits = 0)), colour= "Black", position = position_dodge(0.9),
+    hjust = -0.1,
+    size = 3) + 
+  scale_fill_brewer() + 
+  coord_flip() + 
+  xlab("WHO Region") +
+  ggtitle("Percentage of Wasted children aged 0-5 years")
+
+grid.arrange(plot_1,plot_2,plot_3,plot_4,ncol = 2, heights=c(1,1))
+#Plot is distorted in the R Studio but when plotted on terminal and the image is expanded, the plot is accurate.
+#to check this you can comment the last line of code to see individual plots.
+```
+
+```{r}
+# 3. Correlation values between different forms of malnutrition
+
+correlation <- final_record[c('AverageOverWeightProportion', 'AverageStuntedProportion', 
+                      'AverageUnderWeightProportion', 'AverageWastedProportion')]
+
+names(correlation) <- c(" Overweight", "Stunted", "Underweight", "Wasted")
+
+final_correlation <- cor(correlation, use="complete.obs")
+
+print(final_correlation)
+
+print("positive correlation implies both the variables increase, negative correlation implies one of the variable increases and the other variable decreases, zero correlation implies there is no association between the two variables")
+```
+
+```{r}
+#4. Violin and Box plots 
+
+Output <- inner_d
+
+Overweight<-ggplot(Output, aes(y= Children.aged..5.years.overweight..br.....weight.for.height...2.SD.)  ) +labs(x="Overweight")+labs(y= "Value")+ 
+  labs(caption="Category") + 
+  theme(plot.caption = element_text(hjust=0.5, size=rel(1.2))) +
+  geom_boxplot()+
+  theme(axis.text.y = element_text(face="bold"),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+
+Underweight<-ggplot(Output, aes(y=Children.aged..5.years.underweight..br.....weight.for.age...2.SD.....)  ) +labs(x="Underweight")+labs(y= "Value")+ 
+  labs(caption="Category") + 
+  theme(plot.caption = element_text(hjust=0.5, size=rel(1.2))) +
+  geom_boxplot()+
+  theme(axis.text.y = element_text(face="bold"),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+
+stunted<-ggplot(Output, aes(y=Children.aged..5.years.stunted..br.....height.for.age...2.SD.)  ) +labs(x="Stunted")+labs(y= "Value")+ 
+  labs(caption="Category") + 
+  theme(plot.caption = element_text(hjust=0.5, size=rel(1.2))) +
+  geom_boxplot()+
+  theme(axis.text.y = element_text(face="bold"),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+
+wasted<-ggplot(Output, aes(y=Children.aged..5.years.wasted..br.....weight.for.height...2.SD.)  ) +labs(x="Wasted")+labs(y= "Value")+ 
+  labs(caption="Category") + 
+  theme(plot.caption = element_text(hjust=0.5, size=rel(1.2))) +
+  geom_boxplot()+
+  theme(axis.text.y = element_text(face="bold"),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+
+grid.arrange(Overweight,stunted,Underweight,wasted,ncol = 2, heights=c(1,1))
+
+############
+Overweight_1<-ggplot(Output, aes(x=Children.aged..5.years.overweight..br.....weight.for.height...2.SD.,y= Children.aged..5.years.overweight..br.....weight.for.height...2.SD.)  ) +labs(x="Overweight")+labs(y= "Value")+ 
+  labs(caption="Category") + 
+  theme(plot.caption = element_text(hjust=0.5, size=rel(1.2))) +
+  geom_violin()+
+  theme(axis.text.y = element_text(face="bold"),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+
+Underweight_1<-ggplot(Output, aes(x=Children.aged..5.years.underweight..br.....weight.for.age...2.SD.....,y=Children.aged..5.years.underweight..br.....weight.for.age...2.SD.....)  ) +labs(x="Underweight")+labs(y= "Value")+ 
+  labs(caption="Category") + 
+  theme(plot.caption = element_text(hjust=0.5, size=rel(1.2))) +
+  geom_violin()+
+  theme(axis.text.y = element_text(face="bold"),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+
+stunted_1<-ggplot(Output, aes(x=Children.aged..5.years.stunted..br.....height.for.age...2.SD.,y=Children.aged..5.years.stunted..br.....height.for.age...2.SD.)  ) +labs(x="Stunted")+labs(y= "Value")+ 
+  labs(caption="Category") + 
+  theme(plot.caption = element_text(hjust=0.5, size=rel(1.2))) +
+  geom_violin()+
+  theme(axis.text.y = element_text(face="bold"),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+
+wasted_1<-ggplot(Output, aes(x=Children.aged..5.years.wasted..br.....weight.for.height...2.SD.,y=Children.aged..5.years.wasted..br.....weight.for.height...2.SD.)  ) +labs(x="Wasted")+labs(y= "Value")+ 
+  labs(caption="Category") + 
+  theme(plot.caption = element_text(hjust=0.5, size=rel(1.2))) +
+  geom_violin()+
+  theme(axis.text.y = element_text(face="bold"),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+
+grid.arrange(Overweight_1,stunted_1,Underweight_1,wasted_1,ncol = 2, heights=c(1,1))
+print("Where outliers (as observed in Boxplots) are found, the width of violin plots is thinner, and thicker where high frequency areas are found")
+print("The distribution of the data is easily seen in box plots, whilst the approximate frequency of each datapoint in the dataset is shown in violin plots.")
+print("Compared to other forms of malnutrition, stunted malnutrition has the highest prevalence of malnutrition.")
+
+```
+
+```{r}
+#5. computing the number of farmers markets by state and arranging them in descending order of number of farmers market
+
+fm <- read.csv("fm.csv")
+
+Farmer_market<-fm %>%
+  select (FMID, State)
+  
+fm_state_desc <- Farmer_market %>%
+  group_by(State) %>%
+  summarise(No_of_farmer_market=n()) %>%
+  drop_na()%>%
+arrange(desc(No_of_farmer_market))
+
+print(fm_state_desc)
+
+```
+
+
+
+```{r}
+#6. computing the number of farmers market by cities in Massachusetts and displaying top five cities
+
+Farmer_market_city<-fm %>%
+  dplyr::select (FMID, State,city)%>%
+filter(State=='Massachusetts')%>%
+  group_by(city) %>%
+  summarise(No_of_farmer_market=n()) %>%
+  drop_na()%>%
+  arrange(desc(No_of_farmer_market))%>%
+slice(1:5)
+
+print(Farmer_market_city)
+
+```
+
+```{r}
+#7. Generate the following table using pivot function
+
+Farmer_Table<-fm%>%
+  select(State,Credit,WIC,WICcash,SNAP) %>%
+  
+pivot_longer(
+!State,
+names_to ="Payment_Method",
+values_to = "count",
+values_drop_na = TRUE)
+
+Farmer_Table<-Farmer_Table%>%
+  group_by(State,Payment_Method,count)%>%
+  tally(., wt = NULL, name = "#Farmers Market ")
+Farmer_Table<-Farmer_Table[!(Farmer_Table$count =="N"),]
+Farmer_Table<-select(Farmer_Table,-3)
+print(Farmer_Table)
+
+```
